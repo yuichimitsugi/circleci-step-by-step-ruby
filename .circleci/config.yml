@@ -18,8 +18,8 @@ commands:
       - run:
           name: apt update
           command: |
-            sudo apt-get update
-            sudo apt-get install -qq -y rsync
+            sudo yum update
+            sudo yum install -q -y rsync
       - add_ssh_keys: 
           fingerprints:
           - << parameters.fingerprints >>
