@@ -1,16 +1,58 @@
-version: 2
-jobs:
-  build:
+version: 2.1
+
+executors:
+  go-exec:
     docker:
-      - image: debian:stretch
+      - image: circleci/golang:1.15
+
+commands:
+  circleci-deploy:
+    parameters:
+      fingerprints:
+        type: string
+      destip: 
+        type: string
 
     steps:
       - checkout
-
       - run:
-          name: Greeting
-          command: echo Hello, world.
-
+          name: apt update
+          command: |
+            sudo apt-get update
+            sudo apt-get install -qq -y rsync
+      - add_ssh_keys: 
+          fingerprints:
+          - << parameters.fingerprints >>
+      - run: 
+          name: ssh-keyscan setting
+          command: |
+            ssh-keyscan -p 22 << parameters.destip >> >> ~/.ssh/known_hosts
+      - run: 
+          name: rsync
+          command: |
+            rsync -auz ./index.html ec2-user@<< parameters.destip >>:/home/ec2-user/
       - run:
-          name: Print the Current Time
-          command: date
+          name: nginx install
+          command: |
+            ssh -p 22 ec2-user@<< parameters.destip >> 'sudo amazon-linux-extras install nginx1 && sudo systemctl start nginx'
+      - run:
+          name: index.html setting
+          command: |
+            ssh -p 22 ec2-user@<< parameters.destip >> 'sudo mv index.html /usr/share/nginx/html/'
+
+jobs:
+  circleci-job:
+    executor: go-exec
+    working_directory: ~/repo
+    steps:
+      - circleci-deploy:
+          fingerprints: ee:bb:31:b1:91:29:dc:54:85:47:86:c6:1e:1b:24:d1
+          destip: 10.164.204.81
+
+
+workflows:
+  version: 2
+  run-nginx:
+    jobs:
+      - circleci-job
+      
