@@ -1,57 +1,44 @@
-version: 2.1
+version: 2
 
-executors:
-  go-exec:
+jobs:
+  circleci-job:
     docker:
       - image: circleci/golang:1.15
-
-commands:
-  circleci-deploy:
-    parameters:
-      fingerprints:
-        type: string
-      destip: 
-        type: string
-
+    working_directory: ~/repo
+    environment:
+      DESTIP: 10.164.204.81
     steps:
       - checkout
       - run:
           name: apt update
           command: |
-            sudo yum update
-            sudo yum install -q -y rsync
+            sudo apt-get update
+            sudo apt-get install -qq -y rsync
       - add_ssh_keys: 
           fingerprints:
-          - << parameters.fingerprints >>
+          - "ee:bb:31:b1:91:29:dc:54:85:47:86:c6:1e:1b:24:d1"
       - run: 
           name: ssh-keyscan setting
           command: |
-            ssh-keyscan -p 22 << parameters.destip >> >> ~/.ssh/known_hosts
+            ssh-keyscan -p 22 ${DESTIP} >> ~/.ssh/known_hosts
       - run: 
           name: rsync
           command: |
-            rsync -auz ./index.html ec2-user@<< parameters.destip >>:/home/ec2-user/
+            rsync -auz ./index.html ec2-user@${DESTIP}:/home/ec2-user/
       - run:
           name: nginx install
           command: |
-            ssh -p 22 ec2-user@<< parameters.destip >> 'sudo amazon-linux-extras install nginx1 && sudo systemctl start nginx'
+            ssh -p 22 ec2-user@${DESTIP} 'sudo amazon-linux-extras install nginx1 && sudo systemctl start nginx'
       - run:
           name: index.html setting
           command: |
-            ssh -p 22 ec2-user@<< parameters.destip >> 'sudo mv index.html /usr/share/nginx/html/'
+            ssh ec2-user@${DESTIP} 'sudo mv index.html /usr/share/nginx/html/'
 
-jobs:
-  circleci-job:
-    executor: go-exec
-    working_directory: ~/repo
-    steps:
-      - circleci-deploy:
-          fingerprints: ee:bb:31:b1:91:29:dc:54:85:47:86:c6:1e:1b:24:d1
-          destip: 10.164.204.81
 
 workflows:
   version: 2
   run-nginx:
     jobs:
       - circleci-job
+
 
