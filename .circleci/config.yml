@@ -40,5 +40,3 @@ workflows:
   run-nginx:
     jobs:
       - circleci-job
-
-
